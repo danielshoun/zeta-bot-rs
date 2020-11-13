@@ -6,6 +6,7 @@ use std::env;
 use std::sync::Mutex;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
+use std::collections::HashMap;
 
 mod message;
 mod reply;
@@ -21,12 +22,10 @@ async fn groupme_post(
 	chain: web::Data<Mutex<Chain<String>>>,
 	file: web::Data<Mutex<File>>
 ) -> HttpResponse {
-	println!("GroupMe post request received.");
 	if req_body.0.sender_type == "bot" {
 		HttpResponse::Ok().finish()
 	}
 	else {
-		println!("Rolling to see if bot should reply.");
 		if req_body.0.text != "" {
 			chain.lock().unwrap().feed_str(&*req_body.0.text);
 			file.lock().unwrap().write_all(("\n".to_string() + &*req_body.0.text).as_bytes()).expect("Could not write to file.");
@@ -37,7 +36,15 @@ async fn groupme_post(
 				bot_id: env::var("GROUPME_BOT_ID").ok().get_or_insert("NONE".to_string()).to_string(),
 				text: chain.lock().unwrap().generate_str()
 			};
-			HttpResponse::Ok().json(reply)
+			let mut map = HashMap::new();
+			map.insert("bot_id", reply.bot_id);
+			map.insert("text", reply.text);
+			let client = reqwest::Client::new();
+			let _res = client.post("https://api.groupme.com/v3/bots/post")
+				.json(&map)
+				.send()
+				.await;
+			HttpResponse::Ok().finish()
 		} else {
 			HttpResponse::Ok().finish()
 		}
