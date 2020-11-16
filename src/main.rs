@@ -22,6 +22,7 @@ async fn groupme_post(
 	chain: web::Data<Mutex<Chain<String>>>,
 	file: web::Data<Mutex<File>>
 ) -> HttpResponse {
+	println!("{:?}", req_body);
 	if req_body.0.sender_type == "bot" {
 		HttpResponse::Ok().finish()
 	}
@@ -40,10 +41,11 @@ async fn groupme_post(
 			map.insert("bot_id", reply.bot_id);
 			map.insert("text", reply.text);
 			let client = reqwest::Client::new();
-			let _res = client.post("https://api.groupme.com/v3/bots/post")
+			let res = client.post("https://api.groupme.com/v3/bots/post")
 				.json(&map)
 				.send()
 				.await;
+			println!("{}", res.unwrap().status());
 			HttpResponse::Ok().finish()
 		} else {
 			HttpResponse::Ok().finish()
